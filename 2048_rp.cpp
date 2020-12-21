@@ -876,7 +876,7 @@ int main(int argc, const char* argv[]) {
 
   // set the learning parameters
   float alpha = 0.1;
-  size_t total = 1000;
+  size_t total = 100000;
   unsigned seed = 228076708;
   // __asm__ __volatile__("rdtsc"
   // 										 : "=a"(seed));
@@ -895,13 +895,10 @@ int main(int argc, const char* argv[]) {
   tdl.load("");
 
   // train the model
-  // std::vector<state> path;
   episode path;
   path.reserve(20000);
   std::deque<episode> buffer; // replay buffer
-  // std::vector<episode> minibatch;
   episode minibatch;
-  // minibatch.reserve(3);
   minibatch.reserve(20000);
   for (size_t n = 1; n <= total; n++) {
     board b;
@@ -915,7 +912,6 @@ int main(int argc, const char* argv[]) {
             << b;
       state best = tdl.select_best_move(b);
       path.push_back(best);
-      // buffer.push_back(best);
 
       if (best.is_valid()) {
         debug << "best " << best;
@@ -927,7 +923,6 @@ int main(int argc, const char* argv[]) {
       }
     }
     debug << "end episode" << std::endl;
-    // buffer.pop_back(); // remove terminal state
 
     buffer.push_back(path);
     // maintain container size
@@ -941,22 +936,16 @@ int main(int argc, const char* argv[]) {
 
     // sample minibatch
     for (int i = 0; i < 1; i++) {
-      // minibatch.push_back(buffer[rand() % buffer.size()]);
-      minibatch = buffer[rand()%buffer.size()];
-      // minibatch = buffer[0];
+      // minibatch = buffer[rand()%buffer.size()]; !!! CAUTION !!!
+      minibatch = buffer[0];
 
       // update by TD(0)
-      // tdl.update_episode(path, alpha);
-      // tdl.update_episode(minibatch[i], alpha); // update minibatch
       tdl.update_episode(minibatch, alpha);
       minibatch.clear();
     }
-    // std::cout << "---- minibatch size = " << minibatch.size() << '\n';
-    // std::string line;
-    // std::getline(std::cin, line);
+
     tdl.make_statistic(n, b, score);
     path.clear();
-    // minibatch.clear();
   }
 
   // store the model into file

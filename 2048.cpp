@@ -872,7 +872,7 @@ int main(int argc, const char* argv[]) {
 
   // set the learning parameters
   float alpha = 0.1;
-  size_t total = 1000;
+  size_t total = 100000;
   unsigned seed = 228076708;
   // __asm__ __volatile__("rdtsc"
   // 										 : "=a"(seed));
