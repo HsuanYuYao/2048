@@ -645,8 +645,6 @@ class state {
   float esti;
 };
 
-typedef std::vector<state> episode; // unit of minibatch update
-
 class learning {
  public:
   learning() {}
@@ -744,7 +742,6 @@ class learning {
    *  where (x,x,x,x) means (before state, after state, action, reward)
    */
   void update_episode(std::vector<state>& path, float alpha = 0.1) const {
-    // std::cout << __LINE__ << " path size = " << path.size() << '\n';
     float exact = 0;
     for (path.pop_back() /* terminal state */; path.size(); path.pop_back()) {
       state& move = path.back();
@@ -870,6 +867,8 @@ class learning {
   std::vector<int> scores;
   std::vector<int> maxtile;
 };
+
+typedef std::vector<state> episode; // unit of minibatch update
 
 int main(int argc, const char* argv[]) {
   info << "TDL2048-Demo" << std::endl;
