@@ -3,7 +3,7 @@ project(2048
         VERSION 0.1.0
         LANGUAGES CXX)
 
-set(CMAKE_CXX_COMPILER_VERSION 17)
+set(CMAKE_CXX_STANDARD 17)
 
 add_executable(2048 2048.cpp)
 add_executable(2048_rp 2048_rp.cpp)

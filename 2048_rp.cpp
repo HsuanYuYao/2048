@@ -39,6 +39,7 @@ std::ostream& error = std::cerr;
 std::ostream& debug = *(new std::ofstream);
 
 std::mt19937 gen;
+std::mt19937 gen_b; // random generator for replay buffer.
 
 /**
  * 64-bit bitboard implementation for 2048
@@ -887,6 +888,7 @@ int main(int argc, const char* argv[]) {
   info << "total = " << total << std::endl;
   info << "seed = " << seed << std::endl;
   gen.seed(seed);
+  gen_b.seed(seed);
 
   // initialize the features
   tdl.add_feature(new pattern({0, 1, 2, 3, 4, 5}));
@@ -939,8 +941,7 @@ int main(int argc, const char* argv[]) {
 
     // sample minibatch
     for (int i = 0; i < 1; i++) {
-      // minibatch = buffer[rand()%buffer.size()]; !!! CAUTION !!!
-      minibatch = buffer[0];
+      minibatch = buffer[gen_b()%buffer.size()]; // !!! CAUTION !!
 
       // update by TD(0)
       tdl.update_episode(minibatch, alpha);
