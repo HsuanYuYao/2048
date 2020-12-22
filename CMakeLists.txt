@@ -5,6 +5,8 @@ project(2048
 
 set(CMAKE_CXX_STANDARD 17)
 
+add_subdirectory(spdlog)
+
 add_executable(2048 2048.cpp)
 add_executable(2048_rp 2048_rp.cpp)
 
@@ -15,3 +17,6 @@ if ("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
     target_compile_options(2048_rp PRIVATE -Wall -Wextra -pedantic -fsanitize=address,leak,undefined)
     target_link_options(2048_rp PRIVATE -fsanitize=address,leak,undefined)
 endif ()
+
+target_link_libraries(2048 PRIVATE spdlog::spdlog)
+target_link_libraries(2048_rp PRIVATE spdlog::spdlog)

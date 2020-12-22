@@ -27,6 +27,7 @@
 #include <cmath>
 #include <deque>
 #include <random>
+#include <stdexcept>
 
 /**
  * output streams
@@ -936,6 +937,7 @@ int main(int argc, const char* argv[]) {
     }
     if (buffer.size() <= 0) {
       n -= 1;
+      path.clear();
       continue;
     }
 
