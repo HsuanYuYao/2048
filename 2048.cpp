@@ -25,6 +25,7 @@
 #include <sstream>
 #include <fstream>
 #include <cmath>
+#include <random>
 
 /**
  * output streams
@@ -34,6 +35,7 @@ std::ostream& info = std::cout;
 std::ostream& error = std::cerr;
 std::ostream& debug = *(new std::ofstream);
 // std::ofstream debug("debug.txt");
+std::mt19937 gen;
 
 /**
  * 64-bit bitboard implementation for 2048
@@ -183,7 +185,7 @@ class board {
         space[num++] = i;
       }
     if (num)
-      set(space[rand()%num], rand()%10 ? 1 : 2);
+      set(space[gen()%num], gen()%10 ? 1 : 2);
   }
 
   /**
@@ -879,7 +881,7 @@ int main(int argc, const char* argv[]) {
   info << "alpha = " << alpha << std::endl;
   info << "total = " << total << std::endl;
   info << "seed = " << seed << std::endl;
-  std::srand(seed);
+  gen.seed(seed);
 
   // initialize the features
   tdl.add_feature(new pattern({0, 1, 2, 3, 4, 5}));
