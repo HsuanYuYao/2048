@@ -26,8 +26,10 @@
 #include <fstream>
 #include <cmath>
 #include <deque>
+#include <memory>
 #include <random>
 #include <stdexcept>
+#include "spdlog/spdlog.h"
 
 /**
  * output streams
@@ -747,6 +749,10 @@ class learning {
    *  where (x,x,x,x) means (before state, after state, action, reward)
    */
   void update_episode(std::vector<state>& path, float alpha = 0.1) const {
+/*    std::string line;
+    spdlog::info("*******\n Updating episode!!! \n");
+    std::getline(std::cin, line);*/
+
     float exact = 0;
     for (path.pop_back() /* terminal state */; path.size(); path.pop_back()) {
       state& move = path.back();
@@ -754,7 +760,21 @@ class learning {
       debug << "update error = " << error << " for after state" << std::endl
             << move.after_state();
       exact = move.reward() + update(move.after_state(), alpha*error);
+/*      spdlog::info(
+          "reward = " + std::to_string(move.reward()) +
+              ", exact = " + std::to_string(exact) +
+              ", error = " + std::to_string(error) +
+              ", move.value() = " + std::to_string(move.value())
+      );*/
     }
+  }
+
+  void update_state_pair(state* lhs, state* rhs, float alpha) {
+    if (lhs==nullptr || rhs==nullptr) {
+      return;
+    }
+    float error = lhs->reward() + rhs->value() - lhs->value();
+    lhs->set_value(lhs->reward() + update(lhs->after_state(), alpha*error));
   }
 
   /**
@@ -912,14 +932,20 @@ int main(int argc, const char* argv[]) {
 
     // play an episode
     debug << "begin episode" << std::endl;
+    std::unique_ptr<state> lhs;
+    std::unique_ptr<state> rhs;
+
     b.init();
     while (true) {
-      debug << "state" << std::endl
-            << b;
+      debug << "state" << std::endl << b;
       state best = tdl.select_best_move(b);
-      path.push_back(best);
+
+      // path.push_back(best);
+      lhs = std::move(rhs);
+      rhs = std::make_unique<state>(best);
 
       if (best.is_valid()) {
+        tdl.update_state_pair(lhs.get(), rhs.get(), alpha);
         debug << "best " << best;
         score += best.reward();
         b = best.after_state();
@@ -929,26 +955,6 @@ int main(int argc, const char* argv[]) {
       }
     }
     debug << "end episode" << std::endl;
-
-    buffer.push_back(path);
-    // maintain container size
-    while (buffer.size()==2) {
-      buffer.pop_front();
-    }
-    if (buffer.size() <= 0) {
-      n -= 1;
-      path.clear();
-      continue;
-    }
-
-    // sample minibatch
-    for (int i = 0; i < 1; i++) {
-      minibatch = buffer[gen_b()%buffer.size()]; // !!! CAUTION !!
-
-      // update by TD(0)
-      tdl.update_episode(minibatch, alpha);
-      minibatch.clear();
-    }
 
     tdl.make_statistic(n, b, score);
     path.clear();
