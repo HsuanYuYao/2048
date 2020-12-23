@@ -887,8 +887,8 @@ class learning {
 };
 
 int main(int argc, const char* argv[]) {
-  if (argc!=4) {
-    error << "Usage: ./2048_rp [alpha] [total] [seed]\n";
+  if (argc!=5) {
+    error << "Usage: ./2048_rp [alpha] [total] [seed] [buffer_size]\n";
     return 1;
   }
 
@@ -899,12 +899,12 @@ int main(int argc, const char* argv[]) {
   float alpha = std::stof(argv[1]); // 0.1
   size_t total = std::stoul(argv[2]);
   unsigned seed = std::stoul(argv[3]);
+  size_t buffer_size = std::stoul(argv[4]);
 
-  // __asm__ __volatile__("rdtsc"
-  // 										 : "=a"(seed));
   info << "alpha = " << alpha << std::endl;
   info << "total = " << total << std::endl;
   info << "seed = " << seed << std::endl;
+  info << "buffer_size = " << buffer_size << std::endl;
   gen.seed(seed);
   gen_b.seed(seed);
 
@@ -920,8 +920,6 @@ int main(int argc, const char* argv[]) {
   // train the model
   std::deque<std::pair<state, state>> buffer; // replay buffer
 
-  //  std::vector<state> minibatch;
-  //  minibatch.reserve(20000);
   for (size_t n = 1; n <= total; n++) {
     board b;
     int score = 0;
@@ -935,10 +933,17 @@ int main(int argc, const char* argv[]) {
       debug << "state" << std::endl << b;
       state best = tdl.select_best_move(b);
 
-      // path.push_back(best);
       lhs = rhs;
       rhs = best;
-      tdl.update_state_pair(lhs, rhs, alpha);
+
+      buffer.push_back(std::make_pair(lhs, rhs));
+      if (buffer.size() > buffer_size) {
+        buffer.pop_front();
+      }
+      if (buffer.size()==buffer_size) {
+        std::pair<state, state> state_pair = buffer[gen_b()%buffer.size()];
+        tdl.update_state_pair(state_pair.first, state_pair.second, alpha);
+      }
 
       if (best.is_valid()) {
         debug << "best " << best;
