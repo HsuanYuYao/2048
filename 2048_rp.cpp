@@ -735,40 +735,21 @@ class learning {
   }
 
   /**
-   * update the tuple network by an episode
+   * Update the tuple network by state pairs
+   * A 2048 gameplay looks like the following pattern:
+   * (initial) s0 --(a0,r0)--> s0' --(popup)--> s1 --(a1,r1)--> s1' --(popup)--> s2 (terminal)
+   * where sx is before state, sx' is after state.
+   * We combine (before state, after state, action, reward) together and simply call them `state`:
+   * E.g.,
+   * { (s0,s0',a0,r0), (s1,s1',a1,r1), (s2,s2,x,-1) }
+   * where (x,x,x,x) means (before state, after state, action, reward)
    *
-   * path is the sequence of states in this episode,
-   * the last entry in path (path.back()) is the final state
+   * During the game playing, this function is invoked whenever a best-move has been selected.
    *
-   * for example, a 2048 games consists of
-   *  (initial) s0 --(a0,r0)--> s0' --(popup)--> s1 --(a1,r1)--> s1' --(popup)--> s2 (terminal)
-   *  where sx is before state, sx' is after state
-   *
-   * its path would be
-   *  { (s0,s0',a0,r0), (s1,s1',a1,r1), (s2,s2,x,-1) }
-   *  where (x,x,x,x) means (before state, after state, action, reward)
+   * @param lhs : a pointer to state, where state = (before state, after state, action, reward)
+   * @param rhs : a pointer to lhs's succeeding state
+   * @param alpha : the learning rate
    */
-  void update_episode(std::vector<state>& path, float alpha = 0.1) const {
-/*    std::string line;
-    spdlog::info("*******\n Updating episode!!! \n");
-    std::getline(std::cin, line);*/
-
-    float exact = 0;
-    for (path.pop_back() /* terminal state */; path.size(); path.pop_back()) {
-      state& move = path.back();
-      float error = exact - (move.value() - move.reward());
-      debug << "update error = " << error << " for after state" << std::endl
-            << move.after_state();
-      exact = move.reward() + update(move.after_state(), alpha*error);
-/*      spdlog::info(
-          "reward = " + std::to_string(move.reward()) +
-              ", exact = " + std::to_string(exact) +
-              ", error = " + std::to_string(error) +
-              ", move.value() = " + std::to_string(move.value())
-      );*/
-    }
-  }
-
   void update_state_pair(state* lhs, state* rhs, float alpha) {
     if (lhs==nullptr) {
       return;
@@ -899,8 +880,6 @@ class learning {
   std::vector<int> maxtile;
 };
 
-typedef std::vector<state> episode; // unit of minibatch update
-
 int main(int argc, const char* argv[]) {
   if (argc!=4) {
     error << "Usage: ./2048_rp [alpha] [total] [seed]\n";
@@ -933,11 +912,9 @@ int main(int argc, const char* argv[]) {
   tdl.load("");
 
   // train the model
-  episode path;
-  path.reserve(20000);
-  std::deque<episode> buffer; // replay buffer
-  episode minibatch;
-  minibatch.reserve(20000);
+  // std::deque<std::vector<state> > buffer; // replay buffer
+  //  std::vector<state> minibatch;
+  //  minibatch.reserve(20000);
   for (size_t n = 1; n <= total; n++) {
     board b;
     int score = 0;
@@ -969,7 +946,6 @@ int main(int argc, const char* argv[]) {
     debug << "end episode" << std::endl;
 
     tdl.make_statistic(n, b, score);
-    path.clear();
   }
 
   // store the model into file
