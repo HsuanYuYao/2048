@@ -37,9 +37,8 @@
  */
 std::ostream& info = std::cout;
 std::ostream& error = std::cerr;
-// std::ostream &debug = std::ofstream("debug.txt");
-// std::ofstream debug("debug.txt");
 std::ostream& debug = *(new std::ofstream);
+std::ofstream file;
 
 std::mt19937 gen;
 std::mt19937 gen_b; // random generator for replay buffer.
@@ -817,13 +816,19 @@ class learning {
               "max = "
            << max;
       info << std::endl;
+      file << mean << ", " << max << ", ";
+
+      unsigned int max_tile = 2;
       for (int t = 1, c = 0; c < unit; c += stat[t++]) {
         if (stat[t]==0)
           continue;
         int accu = std::accumulate(stat + t, stat + 16, 0);
-        info << "\t" << ((1 << t) & -2u) << "\t" << (accu*coef) << "%";
+        max_tile = ((1 << t) & -2u);
+        info << "\t" << max_tile << "\t" << (accu*coef) << "%";
         info << "\t(" << (stat[t]*coef) << "%)" << std::endl;
       }
+
+      file << max_tile << std::endl;
       scores.clear();
       maxtile.clear();
     }
@@ -892,23 +897,28 @@ int main(int argc, const char* argv[]) {
     return 1;
   }
 
-  info << "TDL2048-Demo" << std::endl;
-  learning tdl;
-
   // set the learning parameters
   float alpha = std::stof(argv[1]); // 0.1
   size_t total = std::stoul(argv[2]);
   unsigned seed = std::stoul(argv[3]);
   size_t buffer_size = std::stoul(argv[4]);
 
+  info << "TDL2048-Demo" << std::endl;
   info << "alpha = " << alpha << std::endl;
   info << "total = " << total << std::endl;
   info << "seed = " << seed << std::endl;
   info << "buffer_size = " << buffer_size << std::endl;
+
+  std::stringstream ss;
+  ss << "alpha=" << alpha << "_total=" << total << "_seed=" << seed << "_buffersize=" << buffer_size;
+  file.open(ss.str() + ".csv");
+  file << "mean" << ", " << "max" << ", " << "max-tile" << std::endl;
+
+  // initialize the features
   gen.seed(seed);
   gen_b.seed(seed);
 
-  // initialize the features
+  learning tdl;
   tdl.add_feature(new pattern({0, 1, 2, 3, 4, 5}));
   tdl.add_feature(new pattern({4, 5, 6, 7, 8, 9}));
   tdl.add_feature(new pattern({0, 1, 2, 4, 5, 6}));
@@ -919,7 +929,6 @@ int main(int argc, const char* argv[]) {
 
   // train the model
   std::deque<std::pair<state, state>> buffer; // replay buffer
-
   for (size_t n = 1; n <= total; n++) {
     board b;
     int score = 0;
