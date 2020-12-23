@@ -750,18 +750,24 @@ class learning {
    * @param rhs : a pointer to lhs's succeeding state
    * @param alpha : the learning rate
    */
-  void update_state_pair(state* lhs, state* rhs, float alpha) {
-    if (lhs==nullptr) {
+  void update_state_pair(const state& lhs, const state& rhs, float alpha) {
+    if (!lhs.is_valid()) {
       return;
     }
 
     float error = 0.0f;
-    if (!rhs->is_valid()) {
-      error = 0 - lhs->value();
+    if (!rhs.is_valid()) {
+      error = 0 - lhs.value();
     } else {
-      error = rhs->reward() + rhs->value() - lhs->value();
+      error = rhs.reward() + rhs.value() - lhs.value();
     }
-    lhs->set_value(lhs->reward() + update(lhs->after_state(), alpha*error));
+
+    // The code is initially looks like the following:
+    // lhs.set_value(lhs.reward() + update(lhs.after_state(), alpha*error));
+    //
+    // However, we glimpse that there is no need to hold lhs.value() after this function returns,
+    // we replace the code with the following line, which simply update the network weights:
+    update(lhs.after_state(), alpha*error);
   }
 
   /**
@@ -912,27 +918,27 @@ int main(int argc, const char* argv[]) {
   tdl.load("");
 
   // train the model
-  // std::deque<std::vector<state> > buffer; // replay buffer
+  std::deque<std::pair<state, state>> buffer; // replay buffer
+
   //  std::vector<state> minibatch;
   //  minibatch.reserve(20000);
   for (size_t n = 1; n <= total; n++) {
     board b;
     int score = 0;
+    state lhs;
+    state rhs;
 
     // play an episode
     debug << "begin episode" << std::endl;
-    std::unique_ptr<state> lhs;
-    std::unique_ptr<state> rhs;
-
     b.init();
     while (true) {
       debug << "state" << std::endl << b;
       state best = tdl.select_best_move(b);
 
       // path.push_back(best);
-      lhs = std::move(rhs);
-      rhs = std::make_unique<state>(best);
-      tdl.update_state_pair(lhs.get(), rhs.get(), alpha);
+      lhs = rhs;
+      rhs = best;
+      tdl.update_state_pair(lhs, rhs, alpha);
 
       if (best.is_valid()) {
         debug << "best " << best;
