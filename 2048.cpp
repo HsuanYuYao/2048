@@ -869,13 +869,19 @@ class learning {
 };
 
 int main(int argc, const char* argv[]) {
+  if (argc!=4) {
+    error << "Usage: ./2048_rp [alpha] [total] [seed]\n";
+    return 1;
+  }
+
   info << "TDL2048-Demo" << std::endl;
   learning tdl;
 
   // set the learning parameters
-  float alpha = 0.1;
-  size_t total = 100000;
-  unsigned seed = 228076708;
+  float alpha = std::stof(argv[1]); // 0.1
+  size_t total = std::stoul(argv[2]);
+  unsigned seed = std::stoul(argv[3]);
+
   // __asm__ __volatile__("rdtsc"
   // 										 : "=a"(seed));
   info << "alpha = " << alpha << std::endl;

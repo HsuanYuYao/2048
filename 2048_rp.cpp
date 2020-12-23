@@ -770,10 +770,16 @@ class learning {
   }
 
   void update_state_pair(state* lhs, state* rhs, float alpha) {
-    if (lhs==nullptr || rhs==nullptr) {
+    if (lhs==nullptr) {
       return;
     }
-    float error = lhs->reward() + rhs->value() - lhs->value();
+
+    float error = 0.0f;
+    if (!rhs->is_valid()) {
+      error = 0 - lhs->value();
+    } else {
+      error = rhs->reward() + rhs->value() - lhs->value();
+    }
     lhs->set_value(lhs->reward() + update(lhs->after_state(), alpha*error));
   }
 
@@ -896,13 +902,19 @@ class learning {
 typedef std::vector<state> episode; // unit of minibatch update
 
 int main(int argc, const char* argv[]) {
+  if (argc!=4) {
+    error << "Usage: ./2048_rp [alpha] [total] [seed]\n";
+    return 1;
+  }
+
   info << "TDL2048-Demo" << std::endl;
   learning tdl;
 
   // set the learning parameters
-  float alpha = 0.1;
-  size_t total = 100000;
-  unsigned seed = 228076708;
+  float alpha = std::stof(argv[1]); // 0.1
+  size_t total = std::stoul(argv[2]);
+  unsigned seed = std::stoul(argv[3]);
+
   // __asm__ __volatile__("rdtsc"
   // 										 : "=a"(seed));
   info << "alpha = " << alpha << std::endl;
@@ -943,9 +955,9 @@ int main(int argc, const char* argv[]) {
       // path.push_back(best);
       lhs = std::move(rhs);
       rhs = std::make_unique<state>(best);
+      tdl.update_state_pair(lhs.get(), rhs.get(), alpha);
 
       if (best.is_valid()) {
-        tdl.update_state_pair(lhs.get(), rhs.get(), alpha);
         debug << "best " << best;
         score += best.reward();
         b = best.after_state();
