@@ -717,22 +717,75 @@ class learning {
    *
    * you may simply return state() if no valid move
    */
-  state select_best_move(const board& b) const {
+  state select_best_move_search(const board& b, int depth) const {
     state after[4] = {0, 1, 2, 3}; // up, right, down, left
-    state* best = after;
-    for (state* move = after; move!=after + 4; move++) {
-      if (move->assign(b)) {
-        move->set_value(move->reward() + estimate(move->after_state()));
-        if (move->value() > best->value())
-          best = move;
-      } else {
-        move->set_value(-std::numeric_limits<float>::max());
+      state* best = after;
+      float best_value = -std::numeric_limits<float>::max();
+      for (state* move = after; move!=after + 4; move++) {
+          if (move->assign(b)) {
+              float move_value = move->reward() + search_afterstate(move->after_state(), depth-1);
+              if (move_value > best_value) {
+                best = move;
+                best_value = move_value;
+              }
+          }
+          debug << "test " << *move;
       }
-      debug << "test " << *move;
-    }
-    return *best;
+      best->set_value(best->reward() + estimate(best->after_state()));
+      return state(*best);
   }
 
+  float search_afterstate(const board& a, int d) const {
+    if (d == 0) {
+      return estimate(a);
+    } else {
+      float temp_expecti_1 = 0;
+      float temp_expecti_2 = 0;
+
+      int space[16], num = 0;
+
+      for (int i = 0; i < 16; i++) {
+        if (a.at(i) == 0) {
+          space[num++] = i;
+        }
+      }
+
+      if (num) {
+        for (int tile: {1, 2}) {
+          float expect = 0;
+          for (int j = 0; j < num; j++) {
+            board p = a;
+            p.set(space[j], tile);
+            expect += search_state(p, d);
+          }
+          if (tile == 1){
+            temp_expecti_1 = expect / num;
+          } else if (tile == 2) {
+            temp_expecti_2 = expect / num;
+          }
+        }
+      } else {
+        error << "full board after valid action" << std::endl;
+        std::exit(1);
+      }
+
+      float expecti_value = temp_expecti_1 * 0.9 + temp_expecti_2 * 0.1;
+      return expecti_value;
+   }
+  }
+
+  float search_state(const board& b, int depth) const {
+    float best_value = 0;
+    state after[4] = {0, 1, 2, 3}; // up, right, down, left
+    for (state* move = after; move!=after + 4; move++) {
+      if (move->assign(b)) {
+        float move_value = move->reward() + search_afterstate(move->after_state(), depth-1);
+        if (move_value > best_value)
+          best_value = move_value;
+      }
+    }
+    return best_value;
+  }
   /**
    * Update the tuple network by state pairs
    * A 2048 gameplay looks like the following pattern:
@@ -756,9 +809,9 @@ class learning {
 
     float error = 0.0f;
     if (!rhs.is_valid()) {
-      error = 0 - lhs.value();
+      error = 0 - (lhs.value() - lhs.reward());
     } else {
-      error = rhs.reward() + rhs.value() - lhs.value();
+      error = rhs.value() - (lhs.value() - lhs.reward());
     }
 
     // The code is initially looks like the following:
@@ -892,8 +945,8 @@ class learning {
 };
 
 int main(int argc, const char* argv[]) {
-  if (argc!=5) {
-    error << "Usage: ./2048_rp [alpha] [total] [seed] [buffer_size]\n";
+  if (argc!=6) {
+    error << "Usage: ./2048_rp [alpha] [total] [seed] [buffer_size] [search_depth]\n";
     return 1;
   }
 
@@ -902,15 +955,17 @@ int main(int argc, const char* argv[]) {
   size_t total = std::stoul(argv[2]);
   unsigned seed = std::stoul(argv[3]);
   size_t buffer_size = std::stoul(argv[4]);
+  int search_depth = std::stoi(argv[5]);
 
   info << "TDL2048-Demo" << std::endl;
   info << "alpha = " << alpha << std::endl;
   info << "total = " << total << std::endl;
   info << "seed = " << seed << std::endl;
   info << "buffer_size = " << buffer_size << std::endl;
+  info << "search_depth = " << search_depth << std::endl;
 
   std::stringstream ss;
-  ss << "alpha=" << alpha << "_total=" << total << "_seed=" << seed << "_buffersize=" << buffer_size;
+  ss << "alpha=" << alpha << "_total=" << total << "_seed=" << seed << "_buffersize=" << buffer_size << "_searchdepth=" << search_depth;
   file.open(ss.str() + ".csv");
   file << "mean" << ", " << "max" << ", " << "max-tile" << std::endl;
 
@@ -940,7 +995,7 @@ int main(int argc, const char* argv[]) {
     b.init();
     while (true) {
       debug << "state" << std::endl << b;
-      state best = tdl.select_best_move(b);
+      state best = tdl.select_best_move_search(b, search_depth);
 
       lhs = rhs;
       rhs = best;
